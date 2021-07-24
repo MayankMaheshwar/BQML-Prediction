@@ -1,0 +1,19 @@
+Find the NCAA public dataset in BigQuery
+Make sure that you are still in the BigQuery Console for this step. In the Explorer tab, click the + ADD DATA button then select Explore public datasets.
+
+In the search bar, type in "NCAA Basketball" and hit enter. One result will pop up—select it and then click VIEW DATASET:
+
+Write a query to determine available seasons and games
+You will now write a simple SQL query to determine how many seasons and games are available to explore in our mbb_historical_tournament_games table.
+
+In query EDITOR, which is located above the table details section, copy and paste the following into that field:
+
+SELECT
+  season,
+  COUNT(*) as games_per_tournament
+  FROM
+ `bigquery-public-data.ncaa_basketball.mbb_historical_tournament_games`
+ GROUP BY season
+ ORDER BY season # default is Ascending (low to high)
+
+ 

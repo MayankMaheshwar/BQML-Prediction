@@ -1,0 +1,73 @@
+Evaluate model performance
+To evaluate the model's performance you can run a simple ML.EVALUATE against a trained model. Run the following command in the query EDITOR:
+
+SELECT
+  *
+FROM
+  ML.EVALUATE(MODEL   `bracketology.ncaa_model`)
+
+
+The value will be around 69% accurate. While it's better than a coin flip, there is room for improvement.
+
+
+Making predictions
+Now that you trained a model on historical data up to and including the 2017 season (which was all the data you had), it's time to make predictions for the 2018 season. Your data science team has just provided you with the tournament results for the 2018 tournament in a separate table which you don't have in your original dataset.
+
+Making predictions is as simple as calling ML.PREDICT on a trained model and passing through the dataset you want to predict on.
+
+Run the following command in the query EDITOR:
+
+
+CREATE OR REPLACE TABLE `bracketology.predictions` AS (
+
+SELECT * FROM ML.PREDICT(MODEL `bracketology.ncaa_model`,
+
+# predicting for 2018 tournament games (2017 season)
+(SELECT * FROM `data-to-insights.ncaa.2018_tournament_results`)
+)
+)
+
+You will now see your original dataset plus the addition of three new columns:
+
+Predicted label
+Predicted label options
+Predicted label probability
+Since you happen to know the results of the 2018 March Madness tournament, let's see how the model did with it's predictions. (Tip: If you're predicting for this year's March Madness tournament, you would simply pass in a dataset with 2019 seeds and team names. Naturally, the label column will be empty as those games haven't been played yet -- that's what you're predicting!).
+
+
+
+How many did our model get right for the 2018 NCAA tournament?
+Run the following command in the query EDITOR:
+
+SELECT * FROM `bracketology.predictions`
+WHERE predicted_label <> label
+
+Models can only take you so far...
+There are many other factors and features that go into the close wins and amazing upsets of any March Madness tournament that a model would have a very hard time predicting.
+
+Let's find biggest upset for the 2017 tournament according to the model. We'll look where the model predicts with 80%+ confidence and gets it WRONG.
+
+Run the following command in the query EDITOR:
+
+SELECT
+  model.label AS predicted_label,
+  model.prob AS confidence,
+
+  predictions.label AS correct_label,
+
+  game_date,
+  round,
+
+  seed,
+  school_ncaa,
+  points,
+
+  opponent_seed,
+  opponent_school_ncaa,
+  opponent_points
+
+FROM `bracketology.predictions` AS predictions,
+UNNEST(predicted_label_probs) AS model
+
+WHERE model.prob > .8 AND predicted_label <> predictions.label
+g

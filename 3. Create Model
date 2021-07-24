@@ -1,0 +1,106 @@
+Part 1: Create a machine learning model to predict the winner based on seed and team name
+
+Choosing a model type
+For this particular problem, you will be building a classification model. Since we have two classes, win or lose, it's also called a binary classification model. A team can either win or lose a match.
+
+If you wanted to, after the lab, you could forecast the total number of points a team will score using a forecasting model but that isn't going to be our focus here.
+
+An easy way to tell if you're forecasting or classifying is to look at the type of label (column) of data you are predicting:
+
+If it's a numeric column (like units sold or points in a game), you're doing forecasting
+If it's a string value you're doing classification (this row is either this in class or this other class)
+... and If you have more than two classes (like win, lose, or tie) you are doing multi-class classification
+Our classification model will be doing machine learning is with a widely used statistical model called Logistic Regression. We need a model that generates a probability for each possible discrete label value, which in our case is either a 'win' or a 'loss'. Logistic regression is a good model type to start with for this purpose. The good news for you is that the ML model will do all the math and optimization for you during model training -- it's what computers are really good at!
+
+Note: There are many other machine learning models that vary in complexity to perform classification tasks. One commonly used at Google is Deep Learning with neural networks. You can learn the TensorFlow code needed to build neural networks in this Data Science quest.
+Creating a machine learning model with BigQuery ML
+To create our classification model in BigQuery we simply need to write the SQL statement CREATE MODEL and provide a few options.
+
+But, before we can create the model, we need a place in our project to store it first.
+
+In the Explorer tab, click on View actions icon next to your GCP Project ID and select Create dataset.
+
+
+This will open a Create dataset dialog. Set your Dataset ID to bracketology and click CREATE DATASET.
+
+
+CREATE OR REPLACE MODEL
+  `bracketology.ncaa_model`
+OPTIONS
+  ( model_type='logistic_reg') AS
+
+# create a row for the winning team
+SELECT
+  # features
+  season,
+
+  'win' AS label, # our label
+
+  win_seed AS seed, # ranking
+  win_school_ncaa AS school_ncaa,
+
+  lose_seed AS opponent_seed, # ranking
+  lose_school_ncaa AS opponent_school_ncaa
+
+FROM `bigquery-public-data.ncaa_basketball.mbb_historical_tournament_games`
+WHERE season <= 2017
+
+UNION ALL
+
+# create a separate row for the losing team
+SELECT
+# features
+  season,
+
+  'loss' AS label, # our label
+  lose_seed AS seed, # ranking
+  lose_school_ncaa AS school_ncaa,
+
+  win_seed AS opponent_seed, # ranking
+  win_school_ncaa AS opponent_school_ncaa
+
+FROM
+`bigquery-public-data.ncaa_basketball.mbb_historical_tournament_games`
+
+# now we split our dataset with a WHERE clause so we can train on a subset of data and then evaluate and test the model's performance against a reserved subset so the model doesn't memorize or overfit to the training data.
+
+# tournament season information from 1985 - 2017
+# here we'll train on 1985 - 2017 and predict for 2018
+WHERE season <= 2017
+
+In our code you'll notice that creating the model is just a few lines of SQL. One of the most important options is choosing the model type logistic_reg for our classification task.
+
+
+View model training details
+Now that you are in the model details, scroll down to the Training options section and see the actual iterations the model performed to train. If you're experienced with machine learning, note that you can customize all of these hyperparameters (options set before the model runs) by defining their value in the OPTIONS statement. If you're new to machine learning, BigQuery ML will set smart default values for any options not set.
+
+Refer to the BigQuery ML model options list to learn more.
+
+View model training stats
+Machine learning models "learn" the association between known features and unknown labels. As you might intuitively guess, some features like "ranking seed" or "school name" may help determine a win or loss more than other data columns (features) like the day of the week the game is played. Machine learning models start the training process with no such intuition and will generally randomize the weighting of each feature.
+
+During the training process, the model will optimize a path to it's best possible weighting of each feature. With each run it is trying to minimize Training Data Loss and Evaluation Data Loss. Should you ever find that the final loss for evaluation is much higher than for training, your model is overfitting or memorizing your training data instead of learning generalizable relationships.
+
+You can view how many training runs the model tooks by clicking the TRAINING tab and selecting Table under View as option. During our particular run, the model completed 3 training iterations in about 20 seconds. Yours will likely vary.
+
+
+See what the model learned about our features
+After training, you can see which features provided the most value to the model by inspecting the weights. Run the following command in the query EDITOR:
+
+SELECT
+  category,
+  weight
+FROM
+  UNNEST((
+    SELECT
+      category_weights
+    FROM
+      ML.WEIGHTS(MODEL `bracketology.ncaa_model`)
+    WHERE
+      processed_input = 'seed')) # try other features like 'school_ncaa'
+      ORDER BY weight DESC
+
+As you can see, if the seed of a team is very low (1,2,3) or very high (14,15,16) the model gives it a significant weight (max is 1.0) in determining the win loss outcome. Intuitively this makes sense as we expect very low seed teams to perform well in the tournament.
+
+The real magic of machine learning is that we didn't create a ton of hardcoded IF THEN statements in SQL telling the model IF the seed is 1 THEN give the team a 80% more chance of winning. Machine learning does away with hardcoded rules and logic and learns these relationships for itself. Check out the BQML syntax weights documentation to learn more.
+

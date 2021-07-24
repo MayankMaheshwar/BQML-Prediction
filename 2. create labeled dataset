@@ -1,0 +1,81 @@
+Understand machine learning features and labels
+The end goal of this lab is to predict the winner of a given NCAA Men's basketball match-up using past knowledge of historical games. In machine learning, each column of data that will help us determine the outcome (win or loss for a tournament game) is called a feature.
+
+The column of data that you are trying to predict is called the label. Machine learning models "learn" the association between features to predict the outcome of a label.
+
+Examples of features for your historical dataset could be:
+
+Season
+Team name
+Opponent team name
+Team seed (ranking)
+Opponent team seed
+The label you will be trying to predict for future games will be the game outcome—whether or not a team wins or loses.
+
+Create a labeled machine learning dataset
+Building a machine learning model requires a lot of high-quality training data. Fortunately, our NCAA dataset is robust enough where we can rely upon it to build an effective model. Return to the BigQuery Console—you should have left off on the result of the query you ran.
+
+From the left-hand menu, open the mbb_historical_tournament_games table by clicking on the table name. Then once it loads, click PREVIEW. Your page should resemble the following:
+
+After inspecting the dataset, you'll notice that one row in the dataset has columns for both win_market and lose_market. You need to break the single game record into a record for each team so you can label each row as a "winner" or "loser".
+
+In the query EDITOR, copy and paste the following query and then click RUN:
+
+
+# create a row for the winning team
+SELECT
+  # features
+  season, # ex: 2015 season has March 2016 tournament games
+  round, # sweet 16
+  days_from_epoch, # how old is the game
+  game_date,
+  day, # Friday
+
+  'win' AS label, # our label
+
+  win_seed AS seed, # ranking
+  win_market AS market,
+  win_name AS name,
+  win_alias AS alias,
+  win_school_ncaa AS school_ncaa,
+  # win_pts AS points,
+
+  lose_seed AS opponent_seed, # ranking
+  lose_market AS opponent_market,
+  lose_name AS opponent_name,
+  lose_alias AS opponent_alias,
+  lose_school_ncaa AS opponent_school_ncaa
+  # lose_pts AS opponent_points
+
+FROM `bigquery-public-data.ncaa_basketball.mbb_historical_tournament_games`
+
+UNION ALL
+
+# create a separate row for the losing team
+SELECT
+# features
+  season,
+  round,
+  days_from_epoch,
+  game_date,
+  day,
+
+  'loss' AS label, # our label
+
+  lose_seed AS seed, # ranking
+  lose_market AS market,
+  lose_name AS name,
+  lose_alias AS alias,
+  lose_school_ncaa AS school_ncaa,
+  # lose_pts AS points,
+
+  win_seed AS opponent_seed, # ranking
+  win_market AS opponent_market,
+  win_name AS opponent_name,
+  win_alias AS opponent_alias,
+  win_school_ncaa AS opponent_school_ncaa
+  # win_pts AS opponent_points
+
+FROM
+`bigquery-public-data.ncaa_basketball.mbb_historical_tournament_games`
+
